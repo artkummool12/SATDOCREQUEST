@@ -1,0 +1,235 @@
+{
+  "entities": {
+    "Employee": {
+      "title": "Employee",
+      "description": "Corporate employee directory record for SUMINO AAPICO (Thailand) Co.,Ltd.",
+      "type": "object",
+      "properties": {
+        "empNo": {
+          "type": "string",
+          "pattern": "^[A-Z0-9_\\-]+$",
+          "maxLength": 32
+        },
+        "nameTh": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "department": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "division": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "position": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "role": {
+          "type": "string",
+          "enum": ["employee", "dept_head", "hr", "manager", "admin"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["empNo", "nameTh", "role"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Authenticated user profile synchronized from employee directory or SSO",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "email": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "employeeCode": {
+          "type": "string",
+          "maxLength": 32
+        },
+        "position": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "department": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "role": {
+          "type": "string",
+          "enum": ["employee", "dept_head", "hr", "manager", "admin"]
+        },
+        "signatureUrl": {
+          "type": "string",
+          "maxLength": 500000
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["uid", "name", "role"]
+    },
+    "DocumentRequest": {
+      "title": "DocumentRequest",
+      "description": "Corporate document request and 5-step approval workflow record",
+      "type": "object",
+      "properties": {
+        "docNumber": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "formType": {
+          "type": "string",
+          "enum": [
+            "F-HR-011",
+            "F-HR-012",
+            "F-HR-029",
+            "F-HR-032",
+            "F-HR-036",
+            "F-HR-051",
+            "F-GA-007",
+            "ADV-PCV"
+          ]
+        },
+        "requesterUid": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "requesterEmployeeCode": {
+          "type": "string",
+          "maxLength": 32
+        },
+        "requesterName": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "requesterEmail": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "requesterDepartment": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "formData": {
+          "type": "object"
+        },
+        "deliveryMethod": {
+          "type": "string",
+          "enum": ["hardcopy", "pdf", "letter"]
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending_dept_head",
+            "pending_hr",
+            "pending_manager",
+            "approved",
+            "completed",
+            "rejected"
+          ]
+        },
+        "requesterSignatureUrl": {
+          "type": "string",
+          "maxLength": 500000
+        },
+        "deptHeadUid": { "type": "string", "maxLength": 128 },
+        "deptHeadName": { "type": "string", "maxLength": 200 },
+        "deptHeadSignatureUrl": { "type": "string", "maxLength": 500000 },
+        "deptHeadApprovedAt": { "type": "string", "format": "date-time" },
+        "hrUid": { "type": "string", "maxLength": 128 },
+        "hrName": { "type": "string", "maxLength": 200 },
+        "hrSignatureUrl": { "type": "string", "maxLength": 500000 },
+        "hrApprovedAt": { "type": "string", "format": "date-time" },
+        "managerUid": { "type": "string", "maxLength": 128 },
+        "managerName": { "type": "string", "maxLength": 200 },
+        "managerSignatureUrl": { "type": "string", "maxLength": 500000 },
+        "managerApprovedAt": { "type": "string", "format": "date-time" },
+        "receiptSignatureUrl": { "type": "string", "maxLength": 500000 },
+        "receivedAt": { "type": "string", "format": "date-time" },
+        "rejectedBy": { "type": "string", "maxLength": 200 },
+        "rejectedReason": { "type": "string", "maxLength": 1000 },
+        "rejectedAt": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "docNumber",
+        "formType",
+        "requesterUid",
+        "requesterName",
+        "requesterDepartment",
+        "formData",
+        "deliveryMethod",
+        "status"
+      ]
+    },
+    "ApprovalLog": {
+      "title": "ApprovalLog",
+      "description": "Audit trail entry for a document request",
+      "type": "object",
+      "properties": {
+        "requestId": { "type": "string", "maxLength": 128 },
+        "actorUid": { "type": "string", "maxLength": 128 },
+        "actorName": { "type": "string", "maxLength": 200 },
+        "actorRole": { "type": "string", "maxLength": 40 },
+        "action": { "type": "string", "maxLength": 40 },
+        "comment": { "type": "string", "maxLength": 1000 },
+        "signatureUrl": { "type": "string", "maxLength": 500000 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["requestId", "actorUid", "actorName", "actorRole", "action"]
+    },
+    "EmailNotification": {
+      "title": "EmailNotification",
+      "description": "Email notification record generated upon final approval or rejection",
+      "type": "object",
+      "properties": {
+        "requestId": { "type": "string", "maxLength": 128 },
+        "docNumber": { "type": "string", "maxLength": 40 },
+        "requesterUid": { "type": "string", "maxLength": 128 },
+        "requesterDepartment": { "type": "string", "maxLength": 120 },
+        "recipientEmail": { "type": "string", "maxLength": 200 },
+        "subject": { "type": "string", "maxLength": 300 },
+        "body": { "type": "string", "maxLength": 5000 },
+        "status": { "type": "string", "enum": ["sent", "pending"] },
+        "sentAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["requestId", "subject", "body", "status"]
+    }
+  },
+  "firestore": {
+    "/employees/{empNo}": {
+      "schema": { "$ref": "#/entities/Employee" },
+      "description": "Corporate employee directory documents keyed by employee code (e.g. SAT0009)"
+    },
+    "/users/{uid}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "User profiles and saved E-Signatures keyed by user ID"
+    },
+    "/requests/{requestId}": {
+      "schema": { "$ref": "#/entities/DocumentRequest" },
+      "description": "Document workflow requests and 5-step approval state"
+    },
+    "/requests/{requestId}/logs/{logId}": {
+      "schema": { "$ref": "#/entities/ApprovalLog" },
+      "description": "Immutable approval audit trail logs for each request"
+    },
+    "/email_notifications/{notificationId}": {
+      "schema": { "$ref": "#/entities/EmailNotification" },
+      "description": "Automated email notification records per document request"
+    }
+  }
+}

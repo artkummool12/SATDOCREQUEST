@@ -1,0 +1,300 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() &&
+        request.auth.token.email_verified == true &&
+        (
+          request.auth.token.email == 'it.sumino.apico@gmail.com' ||
+          request.auth.token.email == 'admin.it@suminoaapico.com' ||
+          exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+        );
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_:\\-]+$');
+    }
+
+    function isValidRole(role) {
+      return role in ['employee', 'dept_head', 'hr', 'manager', 'admin'];
+    }
+
+    function isValidFormType(ft) {
+      return ft in [
+        'F-HR-011',
+        'F-HR-012',
+        'F-HR-029',
+        'F-HR-032',
+        'F-HR-036',
+        'F-HR-051',
+        'F-GA-007',
+        'ADV-PCV'
+      ];
+    }
+
+    function isValidDelivery(dm) {
+      return dm in ['hardcopy', 'pdf', 'letter'];
+    }
+
+    function isValidStatus(st) {
+      return st in [
+        'pending_dept_head',
+        'pending_hr',
+        'pending_manager',
+        'approved',
+        'completed',
+        'rejected'
+      ];
+    }
+
+    function isValidOptionalSig(data, key) {
+      return !(key in data) || data[key] == null || (data[key] is string && data[key].size() <= 500000);
+    }
+
+    function isValidEmployee(data) {
+      return data.keys().hasAll(['empNo', 'nameTh', 'department', 'division', 'position', 'role', 'createdAt'])
+        && data.keys().hasOnly(['empNo', 'nameTh', 'department', 'division', 'position', 'role', 'createdAt'])
+        && data.empNo is string && data.empNo.size() >= 1 && data.empNo.size() <= 32
+        && data.nameTh is string && data.nameTh.size() >= 1 && data.nameTh.size() <= 200
+        && data.department is string && data.department.size() <= 120
+        && data.division is string && data.division.size() <= 120
+        && data.position is string && data.position.size() <= 120
+        && isValidRole(data.role)
+        && data.createdAt is string && data.createdAt.size() <= 64;
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'name', 'email', 'employeeCode', 'position', 'department', 'role', 'createdAt'])
+        && data.keys().hasOnly(['uid', 'name', 'email', 'employeeCode', 'position', 'department', 'role', 'signatureUrl', 'createdAt'])
+        && data.uid is string && data.uid.size() >= 1 && data.uid.size() <= 128
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 200
+        && data.email is string && data.email.size() <= 200
+        && data.employeeCode is string && data.employeeCode.size() <= 32
+        && data.position is string && data.position.size() <= 120
+        && data.department is string && data.department.size() <= 120
+        && isValidRole(data.role)
+        && isValidOptionalSig(data, 'signatureUrl')
+        && data.createdAt is string && data.createdAt.size() <= 64;
+    }
+
+    function isValidRequest(data) {
+      return data.keys().hasAll([
+          'docNumber',
+          'formType',
+          'requesterUid',
+          'requesterName',
+          'requesterEmail',
+          'requesterDepartment',
+          'formData',
+          'deliveryMethod',
+          'status',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'docNumber',
+          'formType',
+          'requesterUid',
+          'requesterEmployeeCode',
+          'requesterName',
+          'requesterEmail',
+          'requesterDepartment',
+          'formData',
+          'deliveryMethod',
+          'status',
+          'requesterSignatureUrl',
+          'deptHeadUid',
+          'deptHeadName',
+          'deptHeadSignatureUrl',
+          'deptHeadApprovedAt',
+          'hrUid',
+          'hrName',
+          'hrSignatureUrl',
+          'hrApprovedAt',
+          'managerUid',
+          'managerName',
+          'managerSignatureUrl',
+          'managerApprovedAt',
+          'receiptSignatureUrl',
+          'receivedAt',
+          'rejectedBy',
+          'rejectedReason',
+          'rejectedAt',
+          'itComment',
+          'itCommentBy',
+          'itCommentAt',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.docNumber is string && data.docNumber.size() >= 3 && data.docNumber.size() <= 40
+        && isValidFormType(data.formType)
+        && data.requesterUid is string && data.requesterUid.size() >= 1 && data.requesterUid.size() <= 128
+        && (!('requesterEmployeeCode' in data) || data.requesterEmployeeCode == null || (data.requesterEmployeeCode is string && data.requesterEmployeeCode.size() <= 32))
+        && data.requesterName is string && data.requesterName.size() >= 1 && data.requesterName.size() <= 200
+        && data.requesterEmail is string && data.requesterEmail.size() <= 200
+        && data.requesterDepartment is string && data.requesterDepartment.size() <= 120
+        && data.formData is map
+        && isValidDelivery(data.deliveryMethod)
+        && isValidStatus(data.status)
+        && isValidOptionalSig(data, 'requesterSignatureUrl')
+        && isValidOptionalSig(data, 'deptHeadSignatureUrl')
+        && isValidOptionalSig(data, 'hrSignatureUrl')
+        && isValidOptionalSig(data, 'managerSignatureUrl')
+        && isValidOptionalSig(data, 'receiptSignatureUrl')
+        && (!('itComment' in data) || data.itComment == null || (data.itComment is string && data.itComment.size() <= 1000))
+        && (!('itCommentBy' in data) || data.itCommentBy == null || (data.itCommentBy is string && data.itCommentBy.size() <= 200))
+        && (!('itCommentAt' in data) || data.itCommentAt == null || (data.itCommentAt is string && data.itCommentAt.size() <= 64))
+        && data.createdAt is string && data.createdAt.size() <= 64
+        && data.updatedAt is string && data.updatedAt.size() <= 64;
+    }
+
+    function isValidTransition(prevStatus, nextStatus, formType) {
+      return (prevStatus == 'pending_dept_head' && (
+          (formType == 'F-HR-011' && nextStatus in ['approved', 'rejected']) ||
+          (formType != 'F-HR-011' && nextStatus in ['pending_hr', 'rejected'])
+        ))
+        || (prevStatus == 'pending_hr' && (
+            nextStatus in ['pending_manager', 'rejected'] ||
+            (formType == 'F-GA-007' && nextStatus == 'approved')
+          ))
+        || (prevStatus == 'pending_manager' && nextStatus in ['approved', 'rejected'])
+        || (prevStatus == 'approved' && nextStatus == 'completed');
+    }
+
+    function isValidItCommentUpdate() {
+      return existing().formType == 'F-GA-007'
+        && incoming().status == existing().status
+        && existing().status in ['pending_dept_head', 'pending_hr', 'approved', 'completed']
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'itComment',
+          'itCommentBy',
+          'itCommentAt',
+          'updatedAt'
+        ]);
+    }
+
+    function isValidApprovalLog(data) {
+      return data.keys().hasAll(['requestId', 'actorUid', 'actorName', 'actorRole', 'action', 'createdAt'])
+        && data.keys().hasOnly(['requestId', 'actorUid', 'actorName', 'actorRole', 'action', 'comment', 'signatureUrl', 'createdAt'])
+        && data.requestId is string && data.requestId.size() <= 128
+        && data.actorUid is string && data.actorUid.size() <= 128
+        && data.actorName is string && data.actorName.size() <= 200
+        && data.actorRole is string && data.actorRole.size() <= 40
+        && data.action in ['submitted', 'approved_dept_head', 'approved_hr', 'approved_manager', 'received', 'rejected']
+        && (!('comment' in data) || data.comment == null || (data.comment is string && data.comment.size() <= 1000))
+        && isValidOptionalSig(data, 'signatureUrl')
+        && data.createdAt is string && data.createdAt.size() <= 64;
+    }
+
+    function isValidNotification(data) {
+      return data.keys().hasAll(['requestId', 'subject', 'body', 'status', 'sentAt'])
+        && data.keys().hasOnly(['requestId', 'docNumber', 'requesterUid', 'requesterDepartment', 'recipientEmail', 'subject', 'body', 'status', 'sentAt'])
+        && data.requestId is string && data.requestId.size() <= 128
+        && (!('docNumber' in data) || data.docNumber == null || (data.docNumber is string && data.docNumber.size() <= 40))
+        && (!('requesterUid' in data) || data.requesterUid == null || (data.requesterUid is string && data.requesterUid.size() <= 128))
+        && (!('requesterDepartment' in data) || data.requesterDepartment == null || (data.requesterDepartment is string && data.requesterDepartment.size() <= 120))
+        && (!('recipientEmail' in data) || data.recipientEmail == null || (data.recipientEmail is string && data.recipientEmail.size() <= 200))
+        && data.subject is string && data.subject.size() >= 1 && data.subject.size() <= 300
+        && data.body is string && data.body.size() >= 1 && data.body.size() <= 5000
+        && data.status in ['sent', 'pending']
+        && data.sentAt is string && data.sentAt.size() <= 64;
+    }
+
+    match /test/connection {
+      allow get: if true;
+    }
+
+    match /employees/{empNo} {
+      allow get: if isValidId(empNo);
+      allow list: if true;
+      allow create: if isValidId(empNo) && isValidEmployee(incoming()) && incoming().empNo == empNo;
+      allow update: if isValidId(empNo) && isValidEmployee(incoming()) && incoming().empNo == existing().empNo && incoming().createdAt == existing().createdAt;
+      allow delete: if isValidId(empNo);
+    }
+
+    match /users/{uid} {
+      allow get: if isValidId(uid);
+      allow list: if true;
+      allow create: if isValidId(uid) && isValidUser(incoming()) && incoming().uid == uid;
+      allow update: if isValidId(uid) && isValidUser(incoming()) && incoming().uid == existing().uid && incoming().createdAt == existing().createdAt;
+    }
+
+    match /requests/{requestId} {
+      allow get: if isValidId(requestId);
+      allow list: if true;
+      allow create: if isValidId(requestId)
+        && isValidRequest(incoming())
+        && incoming().status == 'pending_dept_head';
+      allow update: if isValidId(requestId)
+        && isValidRequest(incoming())
+        && incoming().docNumber == existing().docNumber
+        && incoming().formType == existing().formType
+        && incoming().requesterUid == existing().requesterUid
+        && incoming().createdAt == existing().createdAt
+        && (
+          isAdmin()
+          || isValidTransition(existing().status, incoming().status, existing().formType)
+          || isValidItCommentUpdate()
+        )
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'status',
+          'updatedAt',
+          'deptHeadUid',
+          'deptHeadName',
+          'deptHeadSignatureUrl',
+          'deptHeadApprovedAt',
+          'hrUid',
+          'hrName',
+          'hrSignatureUrl',
+          'hrApprovedAt',
+          'managerUid',
+          'managerName',
+          'managerSignatureUrl',
+          'managerApprovedAt',
+          'receiptSignatureUrl',
+          'receivedAt',
+          'rejectedBy',
+          'rejectedReason',
+          'rejectedAt',
+          'itComment',
+          'itCommentBy',
+          'itCommentAt'
+        ]);
+
+      match /logs/{logId} {
+        allow get: if isValidId(requestId) && isValidId(logId);
+        allow list: if isValidId(requestId);
+        allow create: if isValidId(requestId)
+          && isValidId(logId)
+          && isValidApprovalLog(incoming())
+          && incoming().requestId == requestId
+          && exists(/databases/$(database)/documents/requests/$(requestId));
+      }
+    }
+
+    match /email_notifications/{notificationId} {
+      allow get: if isValidId(notificationId);
+      allow list: if true;
+      allow create: if isValidId(notificationId) && isValidNotification(incoming());
+    }
+  }
+}
